@@ -227,10 +227,10 @@ filtered_df['Cleaning_Priority'] = np.select(priority_conditions, priority_choic
 
 
 # ==========================================
-# 3. PAGE 1: OVERVIEW SCORECARD
+# 3. PAGE 1: OVERVIEW SCOREBOARD
 # ==========================================
 def show_overview_page():
-    st.title("✅ Scorecard Overview")
+    st.title("✅ Scoreboard Overview")
     st.markdown("---")
     
     st.subheader("📊 Main KPI: Corporate Accuracy Scorecard")
@@ -462,7 +462,7 @@ def show_stress_tester_page():
 
 
 # ==========================================
-# 6. PAGE 4: RAW DATASET VIEW
+# 6. PAGE 4: RAW DATASET VIEW (WITH INTERACTIVE DROPDOWN COLUMN FILTER)
 # ==========================================
 def show_raw_dataset_page():
     st.title("🗃️ Raw System Dataset")
@@ -470,7 +470,24 @@ def show_raw_dataset_page():
     st.markdown("---")
     
     original_columns = list(REQUIREMENTS_TEXT.keys())
-    raw_preview_df = filtered_df[original_columns]
+    
+    # INTERACTIVE SINGLE COLUMN SELECTOR FEATURE
+    st.markdown("### 🎯 Single-Column Inspection Filter")
+    column_options = ["View All Columns"] + original_columns
+    selected_column = st.selectbox(
+        "Choose a specific column to isolate and analyze:", 
+        options=column_options,
+        index=0,
+        help="Select any individual column to hide the rest of the database and focus on its raw values."
+    )
+    
+    # Dynamically slice dataset based on selected dropdown options
+    if selected_column == "View All Columns":
+        raw_preview_df = filtered_df[original_columns]
+    else:
+        raw_preview_df = filtered_df[[selected_column]]
+        
+    st.write("###")
     
     with st.container(border=True):
         m_col1, m_col2, m_col3 = st.columns(3)
