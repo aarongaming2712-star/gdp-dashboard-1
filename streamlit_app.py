@@ -81,15 +81,26 @@ st.markdown("""
 
 
 # ==========================================
-# 2. DATA INGESTION ENGINE & VALIDATION REGISTRY
+# 2. DATA INGESTION ENGINE & VALIDATION REGISTRY (UPDATED LIVE LINK)
 # ==========================================
-@st.cache_data
+@st.cache_data(ttl=60)  # Checks GitHub for updates every 60 seconds maximum
 def load_data():
+    # ⚠️ EDIT THESE VARIABLES TO MATCH YOUR GITHUB REPO DETAILS:
+    username = "YOUR_GITHUB_USERNAME"
+    repo = "YOUR_REPOSITORY_NAME"
+    filename = "Train.csv"
+    
+    base_url = f"https://raw.githubusercontent.com/{username}/{repo}/main/{filename}"
+    
+    # Cache buster addition to prevent GitHub's 5-minute raw file freeze delay
+    unique_url = f"{base_url}?v={int(time.time())}"
+    
     try:
-        # Load production dataset
-        return pd.read_csv("Train.csv")
-    except FileNotFoundError:
-        # Generate perfect baseline if file doesn't exist
+        # Load production dataset directly from live GitHub repository
+        return pd.read_csv(unique_url)
+    except Exception as e:
+        # Graceful sandbox generator fallback if the online URL network check hits an error
+        st.sidebar.warning(f"⚠️ App Backup: Generating local sandbox data (Reason: {e})")
         np.random.seed(42)
         n = 1000
         return pd.DataFrame({
@@ -124,7 +135,6 @@ REQUIREMENTS_TEXT = {
     'Reached.on.Time_Y.N': "Target performance criteria indicator mapping strictly to binaries [0, 1]"
 }
 
-# Glossary containing descriptions for each attribute block
 ATTRIBUTE_DESCRIPTIONS = {
     'ID': "Internal system shipment tracking index number assigned to every unique e-commerce transaction.",
     'Warehouse_block': "The specific regional fulfillment section or warehouse wing (Blocks A through F) storing the inventory item.",
@@ -166,16 +176,19 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("### 🔍 Global Block Filter")
-    selected_blocks = st.multiselect("Select Warehouse Blocks:", options=sorted(df_raw['Warehouse_block'].unique().tolist()), default=None)
+    st.markdown("---")
+    
+    # Safely get sorting parameters from active frame
+    block_options = sorted(df_raw['Warehouse_block'].unique().tolist()) if 'Warehouse_block' in df_raw.columns else ['A','B','C','D','F']
+    selected_blocks = st.multiselect("Select Warehouse Blocks:", options=block_options, default=None)
     
     st.markdown("---")
     st.info("💡 **Multi-Dimensional Mode Active:** System rules engines are evaluating dataset integrity parameters.")
 
 # Filter dataset based on sidebar block choices
 filtered_df = df_raw.copy()
-if selected_blocks:
+if selected_blocks and 'Warehouse_block' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['Warehouse_block'].isin(selected_blocks)]
-
 
 # Initialize dynamic session states to store injected error configurations across script updates
 if "inject_text_typos" not in st.session_state:
@@ -184,21 +197,25 @@ if "inject_math_outliers" not in st.session_state:
     st.session_state.inject_math_outliers = 0
 
 # Apply the error injections directly to our operational runtime dataset copy
-if st.session_state.inject_text_typos > 0:
+if st.session_state.inject_text_typos > 0 and len(filtered_df) > 0:
     sample_size = int(len(filtered_df) * (st.session_state.inject_text_typos / 100))
     if sample_size > 0:
         corrupt_indices = filtered_df.sample(n=sample_size, random_state=42).index
-        filtered_df.loc[corrupt_indices, 'Warehouse_block'] = 'X' # Breaks range rule [A-F]
-        filtered_df.loc[corrupt_indices, 'Mode_of_Shipment'] = 'Drone' # Breaks category constraint
+        if 'Warehouse_block' in filtered_df.columns:
+            filtered_df.loc[corrupt_indices, 'Warehouse_block'] = 'X' 
+        if 'Mode_of_Shipment' in filtered_df.columns:
+            filtered_df.loc[corrupt_indices, 'Mode_of_Shipment'] = 'Drone' 
 
-if st.session_state.inject_math_outliers > 0:
+if st.session_state.inject_math_outliers > 0 and len(filtered_df) > 0:
     sample_size = int(len(filtered_df) * (st.session_state.inject_math_outliers / 100))
     if sample_size > 0:
         corrupt_indices = filtered_df.sample(n=sample_size, random_state=24).index
-        filtered_df.loc[corrupt_indices, 'Cost_of_the_Product'] = -999 # Breaks positive value rule
-        filtered_df.loc[corrupt_indices, 'Customer_rating'] = 9 # Breaks max rating limit of 5
-        filtered_df.loc[corrupt_indices, 'Weight_in_gms'] = -50 # Breaks logical package mass scale
-
+        if 'Cost_of_the_Product' in filtered_df.columns:
+            filtered_df.loc[corrupt_indices, 'Cost_of_the_Product'] = -999 
+        if 'Customer_rating' in filtered_df.columns:
+            filtered_df.loc[corrupt_indices, 'Customer_rating'] = 9 
+        if 'Weight_in_gms' in filtered_df.columns:
+            filtered_df.loc[corrupt_indices, 'Weight_in_gms'] = -50 
 
 # Run rules engines checks against computed/simulated states
 registry_masks = {}
@@ -231,7 +248,7 @@ for column_name, validation_rule in MEASUREMENT_REGISTRY.items():
 global_dataset_score = (total_elements_passed / total_elements_audited) * 100 if total_elements_audited > 0 else 0
 
 mask_df = pd.DataFrame(registry_masks)
-failure_counts = (~mask_df).sum(axis=1)
+failure_counts = (~mask_df).sum(axis=1) if not mask_df.empty else pd.Series(0, index=filtered_df.index)
 
 priority_conditions = [
     (failure_counts >= 3),
@@ -243,10 +260,9 @@ filtered_df['Cleaning_Priority'] = np.select(priority_conditions, priority_choic
 
 
 # ==========================================
-# 3. PAGE 1: OVERVIEW SCOREBOARD (UPDATED TITLE)
+# 3. PAGE 1: OVERVIEW SCOREBOARD
 # ==========================================
 def show_overview_page():
-    # BRAND NEW HEADER PROFILE
     st.title("📦 E-Commerce Shipping Data")
     st.markdown("### ✅ Scoreboard Overview Dashboard")
     st.markdown("Real-time telemetry and validation auditing for tracking operational shipping pipelines.")
@@ -392,8 +408,7 @@ def show_registry_page():
             return 'background-color: #f0fdf4; color: #166534; font-weight: bold; border: 1px solid #bbf7d0;'
         return ''
 
-    styled_summary = (summary_df.style
-                      .map(style_registry_grid, subset=['Status']))
+    styled_summary = (summary_df.style.map(style_registry_grid, subset=['Status']))
     
     with st.container(border=True):
         st.dataframe(styled_summary, use_container_width=True, hide_index=True)
@@ -401,10 +416,9 @@ def show_registry_page():
     st.markdown("---")
     st.subheader("🔍 Interactive Row-by-Row Field Inspector Mapping")
     
-    # Generate the validation layout array
     audit_display_df = filtered_df.copy()
     for col in REQUIREMENTS_TEXT.keys():
-        if col in audit_display_df.columns:
+        if col in audit_display_df.columns and col in registry_masks:
             audit_display_df[f"{col}_Valid"] = registry_masks[col].map({True: "🟢 Valid", False: "🔴 Invalid"})
 
     ordered_cols = []
@@ -415,7 +429,6 @@ def show_registry_page():
     with st.expander("ℹ️ Help Window"):
         st.markdown("Use this expandable section to audit explicit values alongside automated test results.")
 
-    # Row Level Integrity Filter Selector
     st.markdown("### 🎛️ Row Integrity Audit Filter")
     row_filter_choice = st.radio(
         "Isolate rows based on their automated validation status:",
@@ -424,7 +437,7 @@ def show_registry_page():
         help="Filter the inspector table to focus exclusively on clean configurations or system anomalies."
     )
 
-    has_failures = (~mask_df).sum(axis=1) > 0
+    has_failures = (~mask_df).sum(axis=1) > 0 if not mask_df.empty else pd.Series(False, index=filtered_df.index)
     
     if row_filter_choice == "🔴 Has Invalid Fields":
         audit_display_df = audit_display_df[has_failures]
@@ -438,7 +451,7 @@ def show_registry_page():
 
 
 # ==========================================
-# 5. NEW PAGE 3: SYNTHETIC STRESS TESTER & ERROR SIMULATOR
+# 5. PAGE 3: SYNTHETIC STRESS TESTER
 # ==========================================
 def show_stress_tester_page():
     st.title("🛠️ Synthetic Pipeline Stress Tester & Error Simulator")
