@@ -1,3 +1,6 @@
+import builtins
+builtins.set_page_config = lambda *args, **kwargs: None
+
 import streamlit as st
 import pandas as pd
 import altair as alt
