@@ -124,6 +124,22 @@ REQUIREMENTS_TEXT = {
     'Reached.on.Time_Y.N': "Target performance criteria indicator mapping strictly to binaries [0, 1]"
 }
 
+# Glossary containing descriptions for each attribute block
+ATTRIBUTE_DESCRIPTIONS = {
+    'ID': "Internal system shipment tracking index number assigned to every unique e-commerce transaction.",
+    'Warehouse_block': "The specific regional fulfillment section or warehouse wing (Blocks A through F) storing the inventory item.",
+    'Mode_of_Shipment': "The primary logistical transportation channel selected to deliver the package (Flight, Ship, or Road).",
+    'Customer_care_calls': "The cumulative number of inquiry or support phone calls made by the client regarding this specific order.",
+    'Customer_rating': "Post-delivery satisfaction evaluation score submitted by the buyer, scaling from 1 (Lowest) to 5 (Highest).",
+    'Cost_of_the_Product': "The retail invoice price value of the purchased merchandise item listed in corporate currency units.",
+    'Prior_purchases': "The historical count of previous successful transactions completed by this customer profile on our platform.",
+    'Product_importance': "Priority categorization tier assigned by management to optimize shipment fulfillment urgencies (low, medium, high).",
+    'Gender': "The designated gender identity attribute recorded in the customer profile metrics (F or M).",
+    'Discount_offered': "The exact promotional price reduction credit applied to the transaction during checkout processing.",
+    'Weight_in_gms': "The audited physical mass configuration of the packaged container item measured strictly in grams.",
+    'Reached.on.Time_Y.N': "The core performance target variable indicating shipment arrival compliance. (1 = Delayed, 0 = On Time)."
+}
+
 MEASUREMENT_REGISTRY = {
     'ID': lambda series: (pd.to_numeric(series, errors='coerce') > 0).fillna(False),
     'Warehouse_block': lambda series: series.astype(str).str.match(r'^[A-F]$').fillna(False),
@@ -462,7 +478,7 @@ def show_stress_tester_page():
 
 
 # ==========================================
-# 6. PAGE 4: RAW DATASET VIEW (WITH INTERACTIVE DROPDOWN COLUMN FILTER)
+# 6. PAGE 4: RAW DATASET VIEW (WITH DROPDOWN FILTER & METADATA GLOSSARY)
 # ==========================================
 def show_raw_dataset_page():
     st.title("🗃️ Raw System Dataset")
@@ -471,24 +487,48 @@ def show_raw_dataset_page():
     
     original_columns = list(REQUIREMENTS_TEXT.keys())
     
-    # INTERACTIVE SINGLE COLUMN SELECTOR FEATURE
+    # 1. Dropdown Layout Header
     st.markdown("### 🎯 Single-Column Inspection Filter")
     column_options = ["View All Columns"] + original_columns
     selected_column = st.selectbox(
         "Choose a specific column to isolate and analyze:", 
         options=column_options,
         index=0,
-        help="Select any individual column to hide the rest of the database and focus on its raw values."
+        help="Select an individual column to isolate its values and view its specific operational metadata."
     )
     
-    # Dynamically slice dataset based on selected dropdown options
+    # NEW FEATURE: Dynamic Attribute Explanation Box Space
+    st.markdown("---")
+    st.markdown("### 📖 Attribute Metadata Profile")
+    
     if selected_column == "View All Columns":
+        # Display an expander menu containing the master glossary breakdown
+        with st.expander("🔍 Click to view Master Attribute Data Glossary (All 12 Columns)", expanded=True):
+            glossary_data = []
+            for col in original_columns:
+                glossary_data.append({
+                    "Attribute Name": f"🔹 {col}",
+                    "Functional Definition": ATTRIBUTE_DESCRIPTIONS[col],
+                    "Validation Rule Constraint": REQUIREMENTS_TEXT[col]
+                })
+            st.table(pd.DataFrame(glossary_data))
+            
         raw_preview_df = filtered_df[original_columns]
     else:
+        # Isolate explanations for the selected single column inside a clean informational block
+        with st.container(border=True):
+            st.markdown(f"#### 🌐 Column Metadata Profile: `{selected_column}`")
+            info_col1, info_col2 = st.columns(2)
+            with info_col1:
+                st.markdown(f"**Description:**\n{ATTRIBUTE_DESCRIPTIONS[selected_column]}")
+            with info_col2:
+                st.markdown(f"**Data Validation Target Rule:**\n`{REQUIREMENTS_TEXT[selected_column]}`")
+                
         raw_preview_df = filtered_df[[selected_column]]
         
     st.write("###")
     
+    # 3. Operations Metric & Export Banner Configuration
     with st.container(border=True):
         m_col1, m_col2, m_col3 = st.columns(3)
         m_col1.metric("Total Rows Processed", f"{len(raw_preview_df):,}")
