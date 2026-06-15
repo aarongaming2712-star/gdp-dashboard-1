@@ -398,6 +398,7 @@ def show_registry_page():
     st.markdown("---")
     st.subheader("🔍 Interactive Row-by-Row Field Inspector Mapping")
     
+    # Generate the validation layout array
     audit_display_df = filtered_df.copy()
     for col in REQUIREMENTS_TEXT.keys():
         if col in audit_display_df.columns:
@@ -410,6 +411,27 @@ def show_registry_page():
             
     with st.expander("ℹ️ Help Window"):
         st.markdown("Use this expandable section to audit explicit values alongside automated test results.")
+
+    # NEW FEATURE: Interactive Row-Level Integrity Filter Selector
+    st.markdown("### 🎛️ Row Integrity Audit Filter")
+    row_filter_choice = st.radio(
+        "Isolate rows based on their automated validation status:",
+        options=["All Rows", "🔴 Has Invalid Fields", "🟢 Fully Valid Rows"],
+        horizontal=True,
+        help="Filter the inspector table to focus exclusively on clean configurations or system anomalies."
+    )
+
+    # Compute row status masks
+    # A row is completely valid if it has zero false masks across our validation keys
+    has_failures = (~mask_df).sum(axis=1) > 0
+    
+    if row_filter_choice == "🔴 Has Invalid Fields":
+        audit_display_df = audit_display_df[has_failures]
+    elif row_filter_choice == "🟢 Fully Valid Rows":
+        audit_display_df = audit_display_df[~has_failures]
+
+    # Metrics Display Banner for row breakdown updates
+    st.caption(f"Showing {len(audit_display_df):,} records based on selected row filter constraints.")
         
     with st.container(border=True):
         st.dataframe(audit_display_df[ordered_cols], use_container_width=True)
@@ -478,7 +500,7 @@ def show_stress_tester_page():
 
 
 # ==========================================
-# 6. PAGE 4: RAW DATASET VIEW (WITH DROPDOWN FILTER & METADATA GLOSSARY)
+# 6. PAGE 4: RAW DATASET VIEW
 # ==========================================
 def show_raw_dataset_page():
     st.title("🗃️ Raw System Dataset")
@@ -497,12 +519,11 @@ def show_raw_dataset_page():
         help="Select an individual column to isolate its values and view its specific operational metadata."
     )
     
-    # NEW FEATURE: Dynamic Attribute Explanation Box Space
+    # Attribute Explanation Box Space
     st.markdown("---")
     st.markdown("### 📖 Attribute Metadata Profile")
     
     if selected_column == "View All Columns":
-        # Display an expander menu containing the master glossary breakdown
         with st.expander("🔍 Click to view Master Attribute Data Glossary (All 12 Columns)", expanded=True):
             glossary_data = []
             for col in original_columns:
@@ -515,7 +536,6 @@ def show_raw_dataset_page():
             
         raw_preview_df = filtered_df[original_columns]
     else:
-        # Isolate explanations for the selected single column inside a clean informational block
         with st.container(border=True):
             st.markdown(f"#### 🌐 Column Metadata Profile: `{selected_column}`")
             info_col1, info_col2 = st.columns(2)
@@ -528,7 +548,7 @@ def show_raw_dataset_page():
         
     st.write("###")
     
-    # 3. Operations Metric & Export Banner Configuration
+    # Operations Metric & Export Banner Configuration
     with st.container(border=True):
         m_col1, m_col2, m_col3 = st.columns(3)
         m_col1.metric("Total Rows Processed", f"{len(raw_preview_df):,}")
