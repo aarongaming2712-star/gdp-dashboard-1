@@ -243,10 +243,13 @@ filtered_df['Cleaning_Priority'] = np.select(priority_conditions, priority_choic
 
 
 # ==========================================
-# 3. PAGE 1: OVERVIEW SCOREBOARD
+# 3. PAGE 1: OVERVIEW SCOREBOARD (UPDATED TITLE)
 # ==========================================
 def show_overview_page():
-    st.title("✅ Scoreboard Overview")
+    # BRAND NEW HEADER PROFILE
+    st.title("📦 E-Commerce Shipping Data")
+    st.markdown("### ✅ Scoreboard Overview Dashboard")
+    st.markdown("Real-time telemetry and validation auditing for tracking operational shipping pipelines.")
     st.markdown("---")
     
     st.subheader("📊 Main KPI: Corporate Accuracy Scorecard")
@@ -412,7 +415,7 @@ def show_registry_page():
     with st.expander("ℹ️ Help Window"):
         st.markdown("Use this expandable section to audit explicit values alongside automated test results.")
 
-    # NEW FEATURE: Interactive Row-Level Integrity Filter Selector
+    # Row Level Integrity Filter Selector
     st.markdown("### 🎛️ Row Integrity Audit Filter")
     row_filter_choice = st.radio(
         "Isolate rows based on their automated validation status:",
@@ -421,8 +424,6 @@ def show_registry_page():
         help="Filter the inspector table to focus exclusively on clean configurations or system anomalies."
     )
 
-    # Compute row status masks
-    # A row is completely valid if it has zero false masks across our validation keys
     has_failures = (~mask_df).sum(axis=1) > 0
     
     if row_filter_choice == "🔴 Has Invalid Fields":
@@ -430,7 +431,6 @@ def show_registry_page():
     elif row_filter_choice == "🟢 Fully Valid Rows":
         audit_display_df = audit_display_df[~has_failures]
 
-    # Metrics Display Banner for row breakdown updates
     st.caption(f"Showing {len(audit_display_df):,} records based on selected row filter constraints.")
         
     with st.container(border=True):
@@ -451,7 +451,6 @@ def show_stress_tester_page():
         st.markdown("#### 🛠️ Error Ingestion Matrix")
         st.caption("Slide elements to inject real-world system anomalies into your active rows.")
         
-        # Capture variables directly to browser state blocks
         st.session_state.inject_text_typos = st.slider(
             "Inject Logging Text Typos (%)", 
             min_value=0, max_value=100, 
@@ -478,13 +477,11 @@ def show_stress_tester_page():
         st.markdown("#### 📈 Dynamic Live Breakdown Analysis")
         st.write("Observe how simulated degradation trends interact with your configured corporate target thresholds.")
         
-        # Display summary visualizer cards based on generated conditions
         if global_dataset_score < target_threshold:
             st.error(f"❌ **System Status: BREACHED**\nThe dataset accuracy ({global_dataset_score:.2f}%) has fallen underneath your target baseline threshold of {target_threshold}%.")
         else:
             st.success(f"✅ **System Status: STABLE**\nDataset metrics are holding above the required validation limits.")
             
-        # Chart breakdown visualization representing real-time stability
         status_chart_df = pd.DataFrame({
             'Category': ['Accurate Database Values', 'Flagged Failures'],
             'Count': [total_elements_passed, total_elements_audited - total_elements_passed]
@@ -509,7 +506,6 @@ def show_raw_dataset_page():
     
     original_columns = list(REQUIREMENTS_TEXT.keys())
     
-    # 1. Dropdown Layout Header
     st.markdown("### 🎯 Single-Column Inspection Filter")
     column_options = ["View All Columns"] + original_columns
     selected_column = st.selectbox(
@@ -519,7 +515,6 @@ def show_raw_dataset_page():
         help="Select an individual column to isolate its values and view its specific operational metadata."
     )
     
-    # Attribute Explanation Box Space
     st.markdown("---")
     st.markdown("### 📖 Attribute Metadata Profile")
     
@@ -548,7 +543,6 @@ def show_raw_dataset_page():
         
     st.write("###")
     
-    # Operations Metric & Export Banner Configuration
     with st.container(border=True):
         m_col1, m_col2, m_col3 = st.columns(3)
         m_col1.metric("Total Rows Processed", f"{len(raw_preview_df):,}")
