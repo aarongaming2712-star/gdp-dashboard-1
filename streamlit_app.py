@@ -7,11 +7,7 @@ import time
 # ==========================================
 # 1. GLOBAL CONFIGURATION & CUSTOM DESIGN PALETTE
 # ==========================================
-st.set_page_config(
-    page_icon="🎯", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.title("🎯 Logistics Enterprise Data Quality Hub")
 
 # Advanced CSS Override for Premium Canvas Styling
 st.markdown("""
